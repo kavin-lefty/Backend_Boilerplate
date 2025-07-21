@@ -82,7 +82,7 @@ const getUserListService = async ({ source, body }) => {
   try {
     const strCollection = "users";
 
-    const page = parseInt(body.page) || 1;
+    const page = parseInt(body.strPage) || 1;
     const limit = 10;
     const skip = (page - 1) * limit;
 
