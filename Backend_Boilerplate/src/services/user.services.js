@@ -86,18 +86,31 @@ const getUserListService = async ({ source, body }) => {
     const limit = 10;
     const skip = (page - 1) * limit;
 
-    const arrQuery = [
-      { $sort: { year: -1 } },
-      { $skip: skip },
-      { $limit: limit },
-    ];
+    const matchStage = {};
+
+    if (body?.strSearch) {
+      const searchRegex = {
+        $regex: body.strSearch.trim().replace(/\s+/g, ".*"),
+        $options: "i",
+      };
+
+      matchStage.$or = [{ name: searchRegex }, { email: searchRegex }];
+    }
+
+    const arrQuery = [];
+
+    if (Object.keys(matchStage).length) {
+      arrQuery.push({ $match: matchStage });
+    }
+
+    arrQuery.push({ $sort: { year: -1 } }, { $skip: skip }, { $limit: limit });
 
     const arrList = await getListDB({ strCollection, arrQuery });
 
     const objConnection = await GetMongoDbConnection();
     const totalCount = await objConnection
       .collection(strCollection)
-      .countDocuments();
+      .countDocuments(matchStage);
 
     return {
       arrList,
