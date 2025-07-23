@@ -10,6 +10,8 @@ const {
   deleteDB,
   deleteOneDB,
   updateFindOneKeyDB,
+  getCountDB,
+  updateManyDB,
 } = require("./mongoQueries");
 
 module.exports = {
@@ -24,4 +26,6 @@ module.exports = {
   deleteDB,
   deleteOneDB,
   updateFindOneKeyDB,
+  getCountDB,
+  updateManyDB,
 };

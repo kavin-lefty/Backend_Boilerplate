@@ -9,6 +9,7 @@ const {
   updateSingleUserController,
   deleteOneUserController,
   getMovieCommentsController,
+  getAllMoviesListController
 } = require("../controllers/user.controller");
 
 router.route("/createUser").post(makeController(UserCreationController));
@@ -22,5 +23,7 @@ router.route("/updateUser").put(makeController(updateSingleUserController));
 router.route("/deleteUser").post(makeController(deleteOneUserController));
 
 router.route("/getComments").post(makeController(getMovieCommentsController));
+
+router.route("/getMovies").post(makeController(getAllMoviesListController))
 
 module.exports = router;

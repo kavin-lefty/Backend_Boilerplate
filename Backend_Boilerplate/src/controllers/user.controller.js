@@ -6,6 +6,7 @@ const {
   updateSingleUserService,
   deleteOneUserService,
   getMovieCommentsServices,
+  getAllMoviesListServices
 } = require("../services/user.services");
 
 const UserCreationController = async ({ body, ...source }) => {
@@ -87,6 +88,19 @@ const getMovieCommentsController = async ({ body, ...source }) => {
   }
 };
 
+const getAllMoviesListController = async ({ body, ...source }) => {
+  try {
+    return {
+      body: await getAllMoviesListServices({
+        source,
+        body,
+      }),
+    };
+  } catch (error) {
+    throw new errHandler(error.message).set();
+  }
+};
+
 module.exports = {
   UserCreationController,
   loginUserConntroller,
@@ -94,4 +108,5 @@ module.exports = {
   updateSingleUserController,
   deleteOneUserController,
   getMovieCommentsController,
+  getAllMoviesListController,
 };

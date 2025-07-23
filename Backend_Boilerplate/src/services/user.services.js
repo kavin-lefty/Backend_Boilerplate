@@ -5,6 +5,7 @@ const {
   insertOneDB,
   updateOneKeyDB,
   getOneDB,
+  getCountDB,
 } = require("../libs/common/functions/DB");
 const { errHandler, GetMongoDbConnection } = require("../libs/core/helpers");
 const { ObjectId } = require("mongodb");
@@ -86,6 +87,7 @@ const getUserListService = async ({ source, body }) => {
     const limit = 10;
     const skip = (page - 1) * limit;
 
+    const arrQuery = [];
     const matchStage = {};
 
     if (body?.strSearch) {
@@ -97,8 +99,6 @@ const getUserListService = async ({ source, body }) => {
       matchStage.$or = [{ name: searchRegex }, { email: searchRegex }];
     }
 
-    const arrQuery = [];
-
     if (Object.keys(matchStage).length) {
       arrQuery.push({ $match: matchStage });
     }
@@ -107,10 +107,10 @@ const getUserListService = async ({ source, body }) => {
 
     const arrList = await getListDB({ strCollection, arrQuery });
 
-    const objConnection = await GetMongoDbConnection();
-    const totalCount = await objConnection
-      .collection(strCollection)
-      .countDocuments(matchStage);
+    const totalCount = await getCountDB({
+      strCollection,
+      objQuery: matchStage,
+    });
 
     return {
       arrList,
@@ -180,6 +180,7 @@ const deleteOneUserService = async ({ source, body }) => {
 const getMovieCommentsServices = async ({ source, body }) => {
   try {
     let baseMatchConditions = { $and: [] };
+    let objQuery = {};
 
     const strCollection = "comments";
 
@@ -195,10 +196,78 @@ const getMovieCommentsServices = async ({ source, body }) => {
 
     const arrList = await getListDB({ strCollection, arrQuery });
 
-    const objConnection = await GetMongoDbConnection();
-    const totalCount = await objConnection
-      .collection(strCollection)
-      .countDocuments();
+    const totalCount = await getCountDB({ strCollection, objQuery });
+    // const objConnection = await GetMongoDbConnection();
+    // const totalCount = await objConnection
+    //   .collection(strCollection)
+    //   .countDocuments();
+
+    return {
+      arrList,
+      pagination: {
+        pageSize: limit,
+        current: page,
+        total: totalCount,
+      },
+    };
+  } catch (error) {
+    throw new errHandler(error.message);
+  }
+};
+
+const getAllMoviesListServices = async ({ source, body }) => {
+  try {
+    const page = Math.max(parseInt(body?.strPage, 10) || 1, 1);
+    const limit = 10;
+    const skip = (page - 1) * limit;
+
+    const strCollection = "movies";
+
+    let objQuery = {};
+
+    let baseMatchConditions = [];
+    let searchMatchConditions = [];
+
+    if (body.strSearch) {
+      searchMatchConditions.push({
+        title: {
+          $regex: body.strSearch.trim().replace(/\s+/g, ".*"),
+          $options: "i",
+        },
+      });
+    }
+
+    const allMatchConditions = [
+      ...baseMatchConditions,
+      ...searchMatchConditions,
+    ];
+
+    const arrServiceQuery = [];
+
+    // Only push $match if there are any conditions
+    if (allMatchConditions.length > 0) {
+      arrServiceQuery.push({ $match: { $and: allMatchConditions } });
+    }
+
+    arrServiceQuery.push(
+      {
+        $lookup: {
+          from: "comments",
+          localField: "_id",
+          foreignField: "movie_id",
+          as: "comments",
+        },
+      },
+      { $skip: skip },
+      { $limit: limit }
+    );
+
+    const arrList = await getListDB({
+      strCollection,
+      arrQuery: arrServiceQuery,
+    });
+
+    const totalCount = await getCountDB({ strCollection, objQuery });
 
     return {
       arrList,
@@ -220,4 +289,5 @@ module.exports = {
   updateSingleUserService,
   deleteOneUserService,
   getMovieCommentsServices,
+  getAllMoviesListServices,
 };
