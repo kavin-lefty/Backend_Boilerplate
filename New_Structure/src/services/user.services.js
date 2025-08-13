@@ -13,19 +13,19 @@ const { jwtSignIn, encryptString } = require("../libs/core/helpers");
 
 const createUserService = async ({ source, body }) => {
   try {
-    const { name, email, password } = body;
+    const { strName, strEmail, strPassword } = body;
 
-    if (!name || !email || !password) {
+    if (!strName || !strEmail || !strPassword) {
       throw new Error("Missing fields: name, email, or password");
     }
 
-    const hashedPassword = await bcrypt.hash(password, 12);
+    const hashedPassword = await bcrypt.hash(strPassword, 12);
 
     const objInsertUser = await insertOneDB({
       objDocument: {
-        name: body.name,
-        email: body.email,
-        password: hashedPassword,
+        strName,
+        strEmail,
+        strPassword: hashedPassword,
       },
       strCollection: "users",
     });
@@ -40,16 +40,16 @@ const createUserService = async ({ source, body }) => {
 
 const loginUserServices = async ({ source, body }) => {
   try {
-    const { email, password } = body;
+    const { strEmail, strPassword } = body;
 
     const objUser = await getOneDB({
       strCollection: "users",
       objQuery: {
-        email,
+        strEmail,
       },
     });
 
-    const isMatch = await bcrypt.compare(password, objUser.password);
+    const isMatch = await bcrypt.compare(strPassword, objUser.strPassword);
 
     if (!isMatch) {
       throw new errHandler("Invalid email or password");
@@ -58,8 +58,9 @@ const loginUserServices = async ({ source, body }) => {
     const strToken = await jwtSignIn(
       {
         strUserId: objUser["_id"].toString(),
-        strEmail: objUser["email"],
-        strName: objUser["name"],
+        strEmail: objUser["strEmail"],
+        strName: objUser["strName"],
+        chrStatus: objUser["chrStatus"],
       },
       {
         issuer: "issuer",
@@ -109,7 +110,6 @@ const getUserListService = async ({ source, body }) => {
 
     const totalCount = await getCountDB({
       strCollection,
-      objQuery: matchStage,
     });
 
     return {
@@ -140,7 +140,7 @@ const updateSingleUserService = async ({ source, body }) => {
       _id: new ObjectId(body.strUserId),
       objDocument: {
         strUpdatedBy: new ObjectId(body.strUserId),
-        strUpdatedTime: new Date(source.timReceived),
+        strUpdatedTime: new Date(source.timeReceived),
         ...objDocument,
       },
       strCollection: "users",
@@ -163,7 +163,7 @@ const deleteOneUserService = async ({ source, body }) => {
       _id: new ObjectId(body.strUserId),
       objDocument: {
         strDeletedBy: new ObjectId(body.strUserId),
-        strDeletedTime: new Date(source.timReceived),
+        strDeletedTime: new Date(source.timeReceived),
         ...objDocument,
       },
       strCollection: "cln_user",
@@ -217,57 +217,58 @@ const getMovieCommentsServices = async ({ source, body }) => {
 
 const getAllMoviesListServices = async ({ source, body }) => {
   try {
-    const page = Math.max(parseInt(body?.strPage, 10) || 1, 1);
+    const page = Math.max(parseInt(body.strPage, 10) || 1, 1);
     const limit = 10;
     const skip = (page - 1) * limit;
 
     const strCollection = "movies";
 
-    let objQuery = {};
+    // Basic condition
+    let basicStatusCondition = {
+      runtime: { $gte: 60 },
+      year: { $gte: 2000 },
+      "imdb.rating": { $eq: 6.8 },
+    };
+    let matchCondition = [basicStatusCondition];
 
-    let baseMatchConditions = [];
-    let searchMatchConditions = [];
-
+    // Search filter
     if (body.strSearch) {
-      searchMatchConditions.push({
-        title: {
-          $regex: body.strSearch.trim().replace(/\s+/g, ".*"),
-          $options: "i",
-        },
+      const regexCondition = {
+        $regex: body.strSearch.trim().replace(/\s+/g, ".*"),
+        $options: "i",
+      };
+      matchCondition.push({
+        $or: [{ title: regexCondition }],
       });
     }
 
-    const allMatchConditions = [
-      ...baseMatchConditions,
-      ...searchMatchConditions,
-    ];
+    const finalMatch = { $and: matchCondition };
 
-    const arrServiceQuery = [];
+    // Count total documents
+    const totalCount = await getCountDB({
+      strCollection,
+      objQuery: finalMatch,
+    });
 
-    // Only push $match if there are any conditions
-    if (allMatchConditions.length > 0) {
-      arrServiceQuery.push({ $match: { $and: allMatchConditions } });
-    }
-
-    arrServiceQuery.push(
+    // Aggregation pipeline
+    let arrServiceQuery = [
+      { $match: finalMatch },
       {
         $lookup: {
           from: "comments",
           localField: "_id",
           foreignField: "movie_id",
-          as: "comments",
+          as: "strComments",
         },
       },
       { $skip: skip },
-      { $limit: limit }
-    );
+      { $limit: limit },
+    ];
 
     const arrList = await getListDB({
       strCollection,
       arrQuery: arrServiceQuery,
     });
-
-    const totalCount = await getCountDB({ strCollection, objQuery });
 
     return {
       arrList,
@@ -278,7 +279,7 @@ const getAllMoviesListServices = async ({ source, body }) => {
       },
     };
   } catch (error) {
-    throw new errHandler(error.message);
+    throw new errHandler(error.message).set();
   }
 };
 

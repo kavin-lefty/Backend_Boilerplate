@@ -16,7 +16,7 @@ const makeController = (controller) => {
         strEmail: req.strEmail,
         strType: req.strType,
         method: req.method,
-        timReceived: moment().tz("Europe/London").format('YYYY-MM-DD hh:mm:ss a'),
+        timeReceived: moment().tz("Europe/London").format('YYYY-MM-DD hh:mm:ss a'),
         path: req.originalUrl,
         strAudience: (req.get("str-audience") || '').toUpperCase(),
         headers: {

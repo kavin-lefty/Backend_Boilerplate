@@ -29,28 +29,29 @@ async function getOneDB({
 }) {
   try {
     let objConnection = await GetMongoDbConnection();
-    if (objProject)
+    if (objProject) {
       return objConnection
         .collection(strCollection)
         .findOne(objQuery, { projection: objProject });
+    }
     return objConnection.collection(strCollection).findOne(objQuery);
   } catch (error) {
     throw new errHandler(error.message);
   }
 }
 
-async function getOneKeyDB({ strCollection, objQuery, objProject = null }) {
-  try {
-    let objConnection = await GetMongoDbConnection();
-    if (objProject)
-      return objConnection
-        .collection(strCollection)
-        .findOne(objQuery, { projection: objProject });
-    return objConnection.collection(strCollection).findOne(objQuery);
-  } catch (error) {
-    throw new errHandler(error.message);
-  }
-}
+// async function getOneKeyDB({ strCollection, objQuery, objProject = null }) {
+//   try {
+//     let objConnection = await GetMongoDbConnection();
+//     if (objProject)
+//       return objConnection
+//         .collection(strCollection)
+//         .findOne(objQuery, { projection: objProject });
+//     return objConnection.collection(strCollection).findOne(objQuery);
+//   } catch (error) {
+//     throw new errHandler(error.message);
+//   }
+// }
 
 async function insertManyDB({
   strCollection,
@@ -207,7 +208,7 @@ async function updateFindOneKeyDB({
   }
 }
 
-async function deleteOneDB({ strCollection, _id, timReceived, strUserId }) {
+async function deleteOneDB({ strCollection, _id, timeReceived, strUserId }) {
   let objConnection = await GetMongoDbConnection();
   try {
     await objConnection.collection(strCollection).updateOne(
@@ -217,7 +218,7 @@ async function deleteOneDB({ strCollection, _id, timReceived, strUserId }) {
       {
         $set: {
           chrStatus: "D",
-          strModifiedTime: timReceived,
+          strModifiedTime: timeReceived,
           strModifiedUser: strUserId,
         },
       }
@@ -276,7 +277,7 @@ async function deleteDB({
   }
 }
 
-async function getCountDB({ strCollection, objQuery }) {
+async function getCountDB({ strCollection, objQuery = { chrStatus: "N" } }) {
   try {
     let objConnection = await GetMongoDbConnection();
     const count = await objConnection
@@ -291,7 +292,7 @@ async function getCountDB({ strCollection, objQuery }) {
 module.exports = {
   getListDB,
   getOneDB,
-  getOneKeyDB,
+  // getOneKeyDB,
   insertManyDB,
   insertOneDB,
   insertOneTransaction,
